@@ -1,5 +1,5 @@
-// src/services/movieService.js - DIPERBARUI
-const API_KEY = "b10f0b40";
+// src/services/movieService.js
+const API_KEY = import.meta.env.VITE_OMDB_API_KEY;
 
 export const movieService = {
   // ... (searchMovies tidak berubah)

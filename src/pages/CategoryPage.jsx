@@ -4,35 +4,9 @@ import { useParams, Link } from "react-router-dom";
 import MovieGrid from "../components/MovieGrid";
 import { movieService } from "../services/movieService";
 import { Loader } from "../components/UI";
+import { CATEGORY_TITLES, CATEGORY_QUERIES } from "../utils/constants";
+import { useMovies } from "../contexts/MovieContext";
 
-const categoryTitles = {
-  popular: "Populer Saat Ini",
-  newReleases: "Rilisan Terbaru",
-  action: "Film Aksi Pilihan",
-  horror: "Film Horor Mencekam",
-  tvSeries: "Serial TV Populer",
-  search: "Hasil Pencarian",
-  comedy: "Film Komedi",
-  scifi: "Sains Fiksi",
-  animation: "Animasi",
-  thriller: "Film Thriller",
-  romance: "Film Romantis",
-};
-
-const categoryQueries = {
-  popular: "avengers",
-  newReleases: "2024",
-  action: "action",
-  horror: "horror",
-  tvSeries: "crime",
-  comedy: "comedy",
-  scifi: "sci-fi",
-  animation: "animation",
-  thriller: "thriller",
-  romance: "romance",
-};
-
-// ... (Komponen SortControl tidak berubah) ...
 function SortControl({ sortBy, setSortBy }) {
   return (
     <div>
@@ -53,9 +27,9 @@ function SortControl({ sortBy, setSortBy }) {
   );
 }
 
-// Terima kembali 'allMovies' sebagai prop
-function CategoryPage({ allMovies, onSelectMovieId }) {
+function CategoryPage() {
   const { categoryId } = useParams();
+  const { movies: allMovies, onSelectMovieId } = useMovies();
 
   // State untuk paginasi halaman kategori
   const [categoryMovies, setCategoryMovies] = useState([]);
@@ -66,7 +40,7 @@ function CategoryPage({ allMovies, onSelectMovieId }) {
   const [sortBy, setSortBy] = useState("relevance");
 
   const isSearchPage = categoryId === "search";
-  const title = categoryTitles[categoryId] || "Kategori";
+  const title = CATEGORY_TITLES[categoryId] || "Kategori";
 
   useEffect(() => {
     // Efek ini HANYA untuk mengambil data halaman kategori, bukan pencarian
@@ -83,7 +57,7 @@ function CategoryPage({ allMovies, onSelectMovieId }) {
     async function fetchCategoryMovies() {
       setIsLoading(true);
       try {
-        const query = categoryQueries[categoryId];
+        const query = CATEGORY_QUERIES[categoryId];
         const type = categoryId === "tvSeries" ? "series" : "movie";
         const data = await movieService.searchMovies(query, 1, { type });
 
@@ -104,16 +78,14 @@ function CategoryPage({ allMovies, onSelectMovieId }) {
     fetchCategoryMovies();
   }, [categoryId, isSearchPage]);
 
-  // --- PERBAIKAN UTAMA DI SINI ---
   // Tentukan sumber data film yang akan ditampilkan
   const movies = isSearchPage ? allMovies.searchResults : categoryMovies;
 
   const handleLoadMore = async () => {
-    // ... (fungsi handleLoadMore tetap sama) ...
     const nextPage = currentPage + 1;
     setIsLoading(true);
     try {
-      const query = categoryQueries[categoryId];
+      const query = CATEGORY_QUERIES[categoryId];
       const type = categoryId === "tvSeries" ? "series" : "movie";
       const data = await movieService.searchMovies(query, nextPage, { type });
       if (data.Search) {

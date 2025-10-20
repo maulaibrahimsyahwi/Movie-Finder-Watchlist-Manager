@@ -2,17 +2,18 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { WatchedSummary } from "../components/Watched";
+import { useWatchlist } from "../contexts/WatchlistContext";
 
-function StatsPage({ watched }) {
+function StatsPage() {
+  const { watched } = useWatchlist();
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   return (
     <div className="py-8">
-      {/* --- PERUBAHAN DI SINI --- */}
       <div className="mb-6">
-        {/* Tombol "Kembali" dibungkus div */}
         <div>
           <Link
             to="/"
@@ -22,7 +23,6 @@ function StatsPage({ watched }) {
           </Link>
         </div>
       </div>
-      {/* --- AKHIR PERUBAHAN --- */}
 
       <h1 className="text-3xl font-bold text-white mb-8">
         Statistik Tontonan Anda

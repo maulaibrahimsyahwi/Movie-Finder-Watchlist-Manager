@@ -5,8 +5,10 @@ import StarRating from "../StarRating";
 import { movieService } from "../../services/movieService";
 import { Loader } from "../UI";
 import MovieCarousel from "./MovieCarousel";
+import { useWatchlist } from "../../contexts/WatchlistContext"; // Import hook
 
-function MovieDetails({ onAddWatched, watched }) {
+function MovieDetails() {
+  const { watched, onAddWatched } = useWatchlist(); // Gunakan hook
   const [movie, setMovie] = useState({});
   const [userRating, setUserRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +25,6 @@ function MovieDetails({ onAddWatched, watched }) {
   )?.userRating;
 
   useEffect(() => {
-    // ... (useEffect utama tidak berubah)
     setMovie({});
     setRecommendations([]);
     async function getMovieDetails() {
@@ -47,7 +48,6 @@ function MovieDetails({ onAddWatched, watched }) {
   }, [selectedId]);
 
   useEffect(() => {
-    // ... (useEffect rekomendasi tidak berubah)
     if (movie && movie.Genre) {
       const mainGenre = movie.Genre.split(",")[0].trim();
       if (mainGenre && mainGenre !== "N/A") {
@@ -75,12 +75,10 @@ function MovieDetails({ onAddWatched, watched }) {
   }, [movie, selectedId]);
 
   useEffect(() => {
-    // ... (useEffect judul tab tidak berubah)
     if (movie.Title) document.title = `CinemaHub | ${movie.Title}`;
     return () => (document.title = "CinemaHub");
   }, [movie.Title]);
 
-  // --- PERBAIKAN UTAMA: FALLBACK UNTUK "N/A" ---
   const {
     Title: title = "Memuat...",
     Year: year = "",
@@ -97,9 +95,7 @@ function MovieDetails({ onAddWatched, watched }) {
     Actors: actors = "Tidak diketahui",
     Director: director = "Tidak diketahui",
   } = movie || {};
-  // --- AKHIR PERBAIKAN ---
 
-  // ... (handler add/close tidak berubah)
   function handleAddWatched() {
     const newWatchedMovie = {
       imdbID: selectedId,
@@ -175,7 +171,6 @@ function MovieDetails({ onAddWatched, watched }) {
           )}
         </div>
 
-        {/* InfoBox sekarang akan menampilkan fallback dengan benar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center">
           <InfoBox
             icon="ri-star-fill"
@@ -220,7 +215,6 @@ function MovieDetails({ onAddWatched, watched }) {
           <span className="font-semibold text-gray-200">Genre:</span> {genre}
         </p>
 
-        {/* ... (Bagian Rating tidak berubah) ... */}
         <div className="mt-8 bg-gray-800/50 rounded-lg p-6">
           {!isWatched ? (
             <>
@@ -261,7 +255,6 @@ function MovieDetails({ onAddWatched, watched }) {
   );
 }
 
-// Komponen InfoBox diperbarui untuk menangani nilai 'N/A' atau '0'
 function InfoBox({ icon, label, value, subtext, color }) {
   const displayValue = value === "N/A" || value === "0" ? "–" : value;
   return (
