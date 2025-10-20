@@ -1,296 +1,275 @@
-// src/components/Movies/MovieDetails.js - Updated Version with Rating Feature
+// src/components/Movies/MovieDetails.jsx - DIPERBARUI
 import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import StarRating from "../StarRating";
 import { movieService } from "../../services/movieService";
+import { Loader } from "../UI";
+import MovieCarousel from "./MovieCarousel";
 
-function MovieDetails({ selectedId, onCloseMovie, onAddWatched, watched }) {
+function MovieDetails({ onAddWatched, watched }) {
   const [movie, setMovie] = useState({});
   const [userRating, setUserRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showAddWatchlist, setShowAddWatchlist] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
 
-  // Safe checking untuk watched array dengan multiple fallbacks
-  const safeWatched = (() => {
-    if (Array.isArray(watched)) return watched;
-    if (
-      watched &&
-      typeof watched === "object" &&
-      watched.length !== undefined
-    ) {
-      return Array.from(watched);
-    }
-    return [];
-  })();
+  const { id: selectedId } = useParams();
+  const navigate = useNavigate();
 
-  const isWatched = safeWatched.some((movie) => movie?.imdbID === selectedId);
-  const userRatingWatched = safeWatched.find(
+  const isWatched = watched.some((movie) => movie?.imdbID === selectedId);
+  const userRatingWatched = watched.find(
     (movie) => movie?.imdbID === selectedId
   )?.userRating;
 
   useEffect(() => {
+    // ... (useEffect utama tidak berubah)
+    setMovie({});
+    setRecommendations([]);
     async function getMovieDetails() {
       if (!selectedId) return;
-
+      setIsLoading(true);
+      setError("");
       try {
-        setIsLoading(true);
-        setError("");
-        setMovie({});
-        setUserRating(0);
-        setShowAddWatchlist(false);
-
         const movieData = await movieService.getMovieDetails(selectedId);
-
         if (movieData && typeof movieData === "object") {
           setMovie(movieData);
         } else {
-          throw new Error("Invalid movie data received");
+          throw new Error("Data film tidak valid");
         }
       } catch (err) {
-        setError(err.message || "Failed to fetch movie details");
-        console.error("Error fetching movie details:", err);
-        setMovie({});
+        setError(err.message || "Gagal mengambil detail film");
       } finally {
         setIsLoading(false);
       }
     }
-
     getMovieDetails();
   }, [selectedId]);
 
-  // Destructure dengan fallback values
+  useEffect(() => {
+    // ... (useEffect rekomendasi tidak berubah)
+    if (movie && movie.Genre) {
+      const mainGenre = movie.Genre.split(",")[0].trim();
+      if (mainGenre && mainGenre !== "N/A") {
+        const fetchRecommendations = async () => {
+          setIsLoadingRecs(true);
+          try {
+            const data = await movieService.searchAllMovies(mainGenre, {
+              type: "movie",
+            });
+            if (data.Search) {
+              const filteredRecs = data.Search.filter(
+                (m) => m.imdbID !== selectedId
+              ).slice(0, 6);
+              setRecommendations(filteredRecs);
+            }
+          } catch (error) {
+            console.error("Gagal mengambil rekomendasi:", error);
+          } finally {
+            setIsLoadingRecs(false);
+          }
+        };
+        fetchRecommendations();
+      }
+    }
+  }, [movie, selectedId]);
+
+  useEffect(() => {
+    // ... (useEffect judul tab tidak berubah)
+    if (movie.Title) document.title = `CinemaHub | ${movie.Title}`;
+    return () => (document.title = "CinemaHub");
+  }, [movie.Title]);
+
+  // --- PERBAIKAN UTAMA: FALLBACK UNTUK "N/A" ---
   const {
-    Title: title = "",
+    Title: title = "Memuat...",
     Year: year = "",
-    Released: released = "",
+    Rated: rated = "Not Rated",
+    Released: released = "Tidak diketahui",
     Poster: poster = "",
-    imdbRating = "N/A",
-    Runtime: runtime = "",
-    Plot: plot = "",
-    Genre: genre = "",
-    Actors: actors = "",
-    Director: director = "",
+    imdbRating = "0",
+    imdbVotes = "0",
+    Metascore: metascore = "0",
+    Awards: awards = "Tidak ada",
+    Runtime: runtime = "0 min",
+    Plot: plot = "Deskripsi plot tidak tersedia.",
+    Genre: genre = "Tidak diketahui",
+    Actors: actors = "Tidak diketahui",
+    Director: director = "Tidak diketahui",
   } = movie || {};
+  // --- AKHIR PERBAIKAN ---
 
-  // Handler untuk rating
-  function handleSetRating(rating) {
-    setUserRating(rating);
-    if (rating > 0) {
-      setShowAddWatchlist(true);
-    } else {
-      setShowAddWatchlist(false);
-    }
-  }
-
+  // ... (handler add/close tidak berubah)
   function handleAddWatched() {
-    if (!title || !userRating || !selectedId) {
-      console.warn("Missing required data for adding to watchlist");
-      return;
-    }
-
-    try {
-      let runtimeNumber = 0;
-      if (runtime && typeof runtime === "string") {
-        const match = runtime.match(/\d+/);
-        runtimeNumber = match ? Number(match[0]) : 0;
-      } else if (runtime && !isNaN(runtime)) {
-        runtimeNumber = Number(runtime);
-      }
-
-      const newWatchedMovie = {
-        imdbID: selectedId,
-        title: title,
-        year: year || "Unknown",
-        poster: poster && poster !== "N/A" ? poster : "",
-        imdbRating: Number(imdbRating) || 0,
-        runtime: runtimeNumber,
-        userRating: Number(userRating),
-      };
-
-      if (typeof onAddWatched === "function") {
-        onAddWatched(newWatchedMovie);
-        // Reset state setelah berhasil menambahkan
-        setUserRating(0);
-        setShowAddWatchlist(false);
-        if (typeof onCloseMovie === "function") {
-          onCloseMovie();
-        }
-      } else {
-        console.error("onAddWatched is not a function");
-      }
-    } catch (err) {
-      console.error("Error adding movie to watchlist:", err);
-      setError("Failed to add movie to watchlist");
-    }
+    const newWatchedMovie = {
+      imdbID: selectedId,
+      title,
+      year,
+      poster,
+      imdbRating: Number(imdbRating) || 0,
+      runtime: Number(runtime.split(" ").at(0)) || 0,
+      userRating: Number(userRating),
+    };
+    onAddWatched(newWatchedMovie);
+    navigate(-1);
+  }
+  function handleCloseMovie() {
+    navigate(-1);
   }
 
-  // Loading state
   if (isLoading) {
     return (
-      <div className="text-center p-8 sm:p-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-purple-500 border-t-transparent"></div>
-        <p className="mt-4 text-gray-300 font-medium text-sm sm:text-base">
-          Loading movie details...
-        </p>
+      <div className="flex justify-center items-center p-12">
+        <Loader />
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="text-center p-6 sm:p-8 bg-red-900/20 border border-red-500/30 rounded-xl">
-        <div className="text-3xl sm:text-4xl mb-2 text-red-400">
-          <i className="ri-error-warning-line"></i>
-        </div>
-        <p className="text-red-400 font-medium text-sm sm:text-base mb-4">
-          {error}
-        </p>
-        <button
-          onClick={() => {
-            setError("");
-            if (typeof onCloseMovie === "function") {
-              onCloseMovie();
-            }
-          }}
-          className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm sm:text-base"
-        >
-          Go Back
-        </button>
-      </div>
-    );
-  }
-
-  // No movie selected state
-  if (!title && !isLoading) {
-    return (
-      <div className="text-center p-6 sm:p-8 text-gray-400">
-        <div className="text-3xl sm:text-4xl mb-2 text-purple-400">
-          <i className="ri-movie-line"></i>
-        </div>
-        <p className="text-sm sm:text-base">No movie selected</p>
+      <div className="text-center p-8 bg-red-900/20 rounded-xl">
+        <p className="text-red-400">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div className="relative text-white">
       <button
-        className="absolute top-2 left-2 cursor-pointer sm:top-4 sm:left-4 z-10 w-8 h-8 sm:w-10 sm:h-10 bg-white/90 hover:bg-white text-gray-900 rounded-full flex items-center justify-center font-bold shadow-lg transition-all duration-200 hover:scale-110 text-sm sm:text-base"
-        onClick={() => {
-          if (typeof onCloseMovie === "function") {
-            onCloseMovie();
-          }
-        }}
+        className="absolute top-4 left-4 z-20 w-10 h-10 bg-gray-800/70 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all"
+        onClick={handleCloseMovie}
       >
-        <i className="ri-arrow-left-line "></i>
+        <i className="ri-arrow-left-line text-xl"></i>
       </button>
 
-      <div className="relative h-48 sm:h-64 lg:h-80 overflow-hidden rounded-t-xl sm:rounded-t-2xl">
+      <div className="relative h-64 md:h-80 lg:h-96">
         <img
           src={
-            poster && poster !== "N/A"
+            poster !== "N/A"
               ? poster
-              : "https://via.placeholder.com/300x450?text=No+Image"
+              : "https://via.placeholder.com/1280x720?text=No+Image"
           }
           alt={`${title} poster`}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            e.target.src = "https://via.placeholder.com/300x450?text=No+Image";
-          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent" />
-        <div className="absolute bottom-3 sm:bottom-6 left-3 sm:left-6 right-3 sm:right-6">
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1 sm:mb-2 line-clamp-2">
-            {title}
-          </h2>
-          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-gray-300 text-xs sm:text-sm">
-            <span className="flex items-center gap-1">
-              <i className="ri-calendar-line text-purple-400"></i>
-              {released || year}
-            </span>
-            <span className="flex items-center gap-1">
-              <i className="ri-time-line text-green-400"></i>
-              {runtime || "N/A"}
-            </span>
-            <span className="flex items-center gap-1 text-yellow-400">
-              <i className="ri-star-fill"></i>
-              {imdbRating || "N/A"}
-            </span>
-          </div>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/50 to-transparent" />
       </div>
 
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="prose prose-invert">
-          <p className="text-gray-300 italic leading-relaxed text-sm sm:text-base">
-            {plot && plot !== "N/A" ? plot : "No plot description available."}
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:gap-3 mt-3 sm:mt-4 text-xs sm:text-sm">
-            <p>
-              <span className="font-semibold text-purple-400">Genre:</span>{" "}
-              <span className="text-gray-300">{genre || "N/A"}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-purple-400">Starring:</span>{" "}
-              <span className="text-gray-300">{actors || "N/A"}</span>
-            </p>
-            <p>
-              <span className="font-semibold text-purple-400">
-                Directed by:
-              </span>{" "}
-              <span className="text-gray-300">{director || "N/A"}</span>
-            </p>
-          </div>
+      <div className="p-6 md:p-8 relative -mt-24 z-10">
+        <h2 className="text-3xl md:text-5xl font-bold mb-2">{title}</h2>
+        <div className="flex items-center space-x-4 text-gray-400 mb-6">
+          <span>{released !== "N/A" ? released : year}</span>
+          {rated !== "N/A" && rated !== "Not Rated" && (
+            <>
+              <span>&bull;</span>
+              <span className="border px-2 py-0.5 rounded text-xs">
+                {rated}
+              </span>
+            </>
+          )}
+          {runtime !== "N/A" && runtime !== "0 min" && (
+            <>
+              <span>&bull;</span>
+              <span>{runtime}</span>
+            </>
+          )}
         </div>
 
-        {/* Rating Section */}
-        <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg sm:rounded-xl p-4 sm:p-6 border border-purple-500/20">
+        {/* InfoBox sekarang akan menampilkan fallback dengan benar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center">
+          <InfoBox
+            icon="ri-star-fill"
+            label="Rating IMDb"
+            value={imdbRating}
+            subtext={imdbVotes !== "N/A" ? `dari ${imdbVotes} suara` : ""}
+            color="text-yellow-400"
+          />
+          <InfoBox
+            icon="ri-trophy-fill"
+            label="Metascore"
+            value={metascore}
+            subtext="dari kritikus"
+            color="text-green-400"
+          />
+          <InfoBox
+            icon="ri-award-fill"
+            label="Penghargaan"
+            value={awards.split(" ").slice(0, 2).join(" ")}
+            subtext={awards !== "N/A" && awards !== "Tidak ada" ? "Total" : ""}
+            color="text-purple-400"
+          />
+          <InfoBox
+            icon="ri-user-star-fill"
+            label="Rating Anda"
+            value={isWatched ? `${userRatingWatched}/10` : "Belum dinilai"}
+            subtext={isWatched ? "Telah ditonton" : ""}
+            color="text-pink-400"
+          />
+        </div>
+
+        <p className="text-base leading-relaxed mb-6">{plot}</p>
+        <p className="text-sm text-gray-400 mb-2">
+          <span className="font-semibold text-gray-200">Dibintangi:</span>{" "}
+          {actors}
+        </p>
+        <p className="text-sm text-gray-400 mb-2">
+          <span className="font-semibold text-gray-200">Sutradara:</span>{" "}
+          {director}
+        </p>
+        <p className="text-sm text-gray-400">
+          <span className="font-semibold text-gray-200">Genre:</span> {genre}
+        </p>
+
+        {/* ... (Bagian Rating tidak berubah) ... */}
+        <div className="mt-8 bg-gray-800/50 rounded-lg p-6">
           {!isWatched ? (
-            <div className="space-y-3 sm:space-y-4">
-              <h3 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-3">
-                Rate this movie
+            <>
+              <h3 className="text-lg font-semibold text-center mb-4">
+                Beri rating film ini
               </h3>
               <div className="flex justify-center">
-                <StarRating
-                  max={10}
-                  size={
-                    typeof window !== "undefined" && window.innerWidth < 640
-                      ? 24
-                      : 28
-                  }
-                  color="#fbbf24"
-                  onSetRating={handleSetRating}
-                />
+                <StarRating max={10} size={28} onSetRating={setUserRating} />
               </div>
-
-              {/* Add to Watchlist Button - muncul setelah rating diberikan */}
-              {showAddWatchlist && userRating > 0 && (
-                <div className="animate-fadeIn">
-                  <button
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg sm:rounded-xl transition-all duration-200 transform hover:scale-[1.01] sm:hover:scale-[1.02] hover:shadow-lg text-sm sm:text-base flex items-center justify-center gap-2"
-                    onClick={handleAddWatched}
-                  >
-                    <i className="ri-add-line"></i>
-                    Add to Watchlist
-                  </button>
-                </div>
+              {userRating > 0 && (
+                <button
+                  className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition-all"
+                  onClick={handleAddWatched}
+                >
+                  Tambahkan ke Daftar Tontonan
+                </button>
               )}
-            </div>
+            </>
           ) : (
-            <div className="text-center">
-              <p className="text-gray-300 text-sm sm:text-base flex items-center justify-center gap-2">
-                <i className="ri-checkbox-circle-fill text-green-400"></i>
-                You've watched this movie and rated it{" "}
-                <span className="font-bold text-yellow-400 flex items-center gap-1">
-                  <i className="ri-star-fill"></i>
-                  {userRatingWatched || 0}/10
-                </span>
-              </p>
-            </div>
+            <p className="text-center text-lg text-yellow-400">
+              Anda telah menilai film ini {userRatingWatched}/10{" "}
+              <i className="ri-check-double-line"></i>
+            </p>
           )}
         </div>
       </div>
+
+      <div className="px-6 md:px-8 mt-8">
+        {!isLoadingRecs && recommendations.length > 0 && (
+          <MovieCarousel
+            title="Rekomendasi Serupa"
+            movies={recommendations}
+            onSelectMovieId={(id) => navigate(`/movie/${id}`)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Komponen InfoBox diperbarui untuk menangani nilai 'N/A' atau '0'
+function InfoBox({ icon, label, value, subtext, color }) {
+  const displayValue = value === "N/A" || value === "0" ? "–" : value;
+  return (
+    <div className="bg-gray-800/50 p-4 rounded-lg">
+      <i className={`${icon} ${color} text-3xl mb-2`}></i>
+      <p className="text-xl font-bold text-white">{displayValue}</p>
+      <p className="text-xs text-gray-400 uppercase tracking-wider">{label}</p>
+      {subtext && <p className="text-xs text-gray-500 mt-1">{subtext}</p>}
     </div>
   );
 }

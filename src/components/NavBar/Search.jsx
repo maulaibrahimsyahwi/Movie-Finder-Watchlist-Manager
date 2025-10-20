@@ -1,4 +1,19 @@
-function Search({ query, setQuery }) {
+// src/components/NavBar/Search.jsx - DIPERBARUI
+import React from "react";
+
+// Tambahkan onSearchSubmit ke props
+function Search({ query, setQuery, onSearchSubmit }) {
+  // Buat handler untuk event key down
+  const handleKeyDown = (event) => {
+    // Cek jika tombol yang ditekan adalah "Enter"
+    if (event.key === "Enter") {
+      // Hentikan perilaku default (seperti submit form)
+      event.preventDefault();
+      // Panggil fungsi pencarian dari App.jsx
+      onSearchSubmit();
+    }
+  };
+
   return (
     <div className="relative group w-full sm:w-auto sm:min-w-[300px] lg:min-w-[400px]">
       <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -22,6 +37,7 @@ function Search({ query, setQuery }) {
         placeholder="Search movies..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown} // Tambahkan event handler di sini
       />
     </div>
   );

@@ -1,25 +1,37 @@
+/* src/index.css */
 @import "tailwindcss";
 
-/* Custom scrollbar styles */
+/* Latar Belakang Dasar */
+@layer base {
+  body {
+    background-color: #141414; /* Latar belakang gelap seperti Netflix */
+    color: #e5e5e5;
+    font-family: "Poppins", sans-serif; /* Font dari index.html */
+  }
+}
+
+/* Kustomisasi Scrollbar (Gaya Netflix) */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #6b46c1 #374151;
+  scrollbar-color: #555 transparent; /* thumb, track */
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px; /* Untuk scroll vertikal */
+  height: 8px; /* Untuk scroll horizontal */
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #374151;
-  border-radius: 3px;
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #6b46c1;
-  border-radius: 3px;
+  background-color: #333;
+  border-radius: 10px;
+  border: 2px solid transparent; /* Memberi sedikit "padding" */
+  background-clip: content-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #7c3aed;
+  background-color: #555;
 }
